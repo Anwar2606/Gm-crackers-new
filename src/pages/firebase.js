@@ -28,12 +28,18 @@ const firebaseConfig = {
   // appId: "1:97163152398:web:b02de4e1e085efbca9c05f"
 
   //main db
-  apiKey: "AIzaSyC7CD7ve78jS2k3a3XzkdlWwBGhp_9Lfg0",
-  authDomain: "billing-software2.firebaseapp.com",
-  projectId: "billing-software2",
-  storageBucket: "billing-software2.appspot.com",
-  messagingSenderId: "97163152398",
-  appId: "1:97163152398:web:b02de4e1e085efbca9c05f"
+  // apiKey: "AIzaSyC7CD7ve78jS2k3a3XzkdlWwBGhp_9Lfg0",
+  // authDomain: "billing-software2.firebaseapp.com",
+  // projectId: "billing-software2",
+  // storageBucket: "billing-software2.appspot.com",
+  // messagingSenderId: "97163152398",
+  // appId: "1:97163152398:web:b02de4e1e085efbca9c05f"
+   apiKey: "AIzaSyAa1kSTH4RZEWm03smvN-ekwagEuaV-mY4",
+  authDomain: "gm-crackers.firebaseapp.com",
+  projectId: "gm-crackers",
+  storageBucket: "gm-crackers.firebasestorage.app",
+  messagingSenderId: "117393056540",
+  appId: "1:117393056540:web:d6cf60c8f2ecae427b90d9"
 };
 
 const app = initializeApp(firebaseConfig);
