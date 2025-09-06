@@ -217,7 +217,7 @@ doc.setTextColor(0, 0, 0);
 doc.text(`Date: ${formattedDate}`, 150, headerStartY + 5 + 3 * lineSpacing);
 
 // ✅ GSTIN
-doc.text('GSTIN: 33ABVFS6600E1Z4', 150, headerStartY + 5 + 4 * lineSpacing);
+// doc.text('GSTIN: 33ABVFS6600E1Z4', 150, headerStartY + 5 + 4 * lineSpacing);
 
   const headerEndY = headerStartY + 5 + 4 * lineSpacing + 6;
 doc.setDrawColor(0, 0, 0);
