@@ -662,280 +662,542 @@ const handleGenerateAllCopies = async () => {
 // const Customer = (invoiceNumber) => {
 //   generatePDF('Customer COPY', invoiceNumber);
 // };
-// const CustomerCopy = async () => {
-//  if (cart.length === 0) {
-//      alert('The cart is empty. Please add items to the cart before saving.');
-//      return; // Exit the function if the cart is empty
-//    }
+const CustomerCopy = (doc,  invoiceNumber, logoBase64) => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const borderMargin = 10;
+
+  const drawPageBorder = () => {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.2);
+    doc.rect(borderMargin, borderMargin, pageWidth - 2 * borderMargin, pageHeight - 2 * borderMargin);
+  };
+
+  drawPageBorder();
+
+  const headerStartY = 14;
+const lineSpacing = 6;
+const startX = 18;
+
+const formattedDate = selectedDate.toLocaleDateString('en-GB');
+
+// Add Logo
+doc.addImage(logoBase64, 'JPEG', startX, headerStartY + 1, 27, 27); // Increased from 22x22 to 30x30
+
+
+// Set font and color
+doc.setFont('helvetica', 'bold');
+doc.setFontSize(8.5);
+doc.setTextColor(255, 0, 0);
+doc.text('GM CRACKERS', startX + 30, headerStartY + 5);
+
+// Address
+
+doc.setTextColor(0, 0, 0);
+doc.setFontSize(9);
+doc.setFont('helvetica', 'bold');
+doc.text('1/176K2, Vaishnavi Nagar,Keela Thiruthangal', startX + 30, headerStartY + 5 + lineSpacing);
+doc.text('Sivakasi,', startX + 30, headerStartY + 5 + 2 * lineSpacing);
+doc.text('Virudhunagar.', startX + 30, headerStartY + 5 + 3 * lineSpacing);
+doc.text('State: 33-Tamil Nadu', startX + 30, headerStartY + 5 + 4 * lineSpacing);
+
+// Right side Invoice Info
+doc.setFont('helvetica', 'bold');
+doc.setFontSize(8.5);
+doc.setTextColor(255, 0, 0);
+doc.text('TAX INVOICE', 150, headerStartY + 5);
+doc.text('Customer COPY', 150, headerStartY + 5 + lineSpacing);
+doc.setFontSize(9);
+doc.setFont('helvetica', 'bold');
+doc.setTextColor(0, 0, 0);
+const formattedInvoiceNumber = String(invoiceNumber).padStart(3, '0');
+doc.text(`Invoice Number: ${formattedInvoiceNumber}`, 150, headerStartY + 5 + 2 * lineSpacing);
+doc.text(`Date: ${formattedDate}`, 150, headerStartY + 5 + 3 * lineSpacing);
+doc.setFontSize(8);
+// doc.text('GSTIN: 33AEGFS0424L1Z4', 150, headerStartY + 5 + 4 * lineSpacing);
+doc.setFont('helvetica', 'bold');
+
+
+// Draw outer rectangle
+const headerEndY = headerStartY + 5 + 5 * lineSpacing;
+doc.setDrawColor(0, 0, 0);
+doc.setLineWidth(0.2);
+doc.rect(14, headerStartY - 2, 182, headerEndY - headerStartY + 4);
+
+
+  // Start Customer Details table
+let startY = headerEndY + 5; // remove the big blank space
+
+
+// Row 1: Name, Address, State
+const row1 = [
+  customerName ? `Name: ${customerName}` : null,
+  customerAddress ? `Address: ${customerAddress}` : null,
+  customerState ? `State: ${customerState}` : null,
+].filter(Boolean).map(item => ({ content: item }));
+
+// Row 2: Phone, GSTIN, PAN
+const row2 = [
+  customerPhoneNo ? `Phone: ${customerPhoneNo}` : null,
+  customerGSTIN ? `GSTIN: ${customerGSTIN}` : null,
+  customerPan ? `PAN: ${customerPan}` : null,
+].filter(Boolean).map(item => ({ content: item }));
+
+// Combine into final table body
+const customerDetails = [];
+
+// ✅ Add 'TO' as the first row
+customerDetails.push([
+  { content: 'TO', styles: { textColor:"#d30466" ,fontStyle: 'bold', fontSize: 15 } },
+  { content: '' }, // 2nd column empty
+  { content: '' }  // 3rd column empty
+]);
+
+
+if (row1.length > 0) customerDetails.push(row1);
+if (row2.length > 0) customerDetails.push(row2);
+
+const customerStartY = startY;
+
+doc.autoTable({
+  body: customerDetails,
+  startY: customerStartY,
+  theme: 'plain',
+  styles: { fontSize: 8 },
+  margin: { left: 15, right: 15 },
+  didParseCell: function (data) {
+    if (data.row.index === 0) {
+      data.cell.styles.fontSize = 11;
+    }
+  }
+});
+
+// Draw surrounding rectangle
+const customerEndY = doc.autoTable.previous.finalY;
+doc.setDrawColor(0);
+doc.setLineWidth(0.1);
+doc.rect(14, customerStartY - 2, 182, customerEndY - customerStartY + 2);
+
+
+
+
+  // Start Products Table
+  startY = doc.autoTable.previous.finalY + 3;
+
+  const tableBody = cart.map((item, index) => [
+    index + 1,
+    item.name,
+    '36041000 ',
+    item.quantity.toString(),
+    `Rs. ${item.saleprice.toFixed(2)}`,
+    `Rs. ${(item.saleprice * item.quantity).toFixed(2)}`
+  ]);
+
+  tableBody.push(
+    [{ content: 'Total Amount:', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.totalAmount)}.00`],
+    [{ content: `Discount (${billingDetails.discountPercentage}%):`, colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.totalAmount * (parseFloat(billingDetails.discountPercentage) / 100)).toFixed(2)}`],
+    [{ content: 'Sub Total:', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.discountedTotal)}.00`]
+  );
+
+  if (taxOption === 'cgst_sgst') {
+    tableBody.push(
+      [{ content: 'CGST (9%):', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.cgstAmount)}.00`],
+      [{ content: 'SGST (9%):', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.sgstAmount)}.00`]
+    );
+  } else if (taxOption === 'igst') {
+    tableBody.push(
+      [{ content: 'IGST (18%):', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.igstAmount)}.00`]
+    );
+  }
+
+const totalQuantity = cart.reduce((sum, item) => {
+  const quantity = parseFloat(item.quantity);
+  return sum + (isNaN(quantity) ? 0 : quantity);
+}, 0);
+  tableBody.push(
+    [{ content: 'Grand Total:', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.grandTotal)}.00`],
+     [
+
+    { content: 'Total Quantity:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+    `${totalQuantity}`
+  ]
+  );
+  tableBody.push(
+        [
+          { content: 'Despatched From:', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', fillColor: '#fff',  } }, // Bottom border for this cell
+          { content: despatchedFrom || 'N/A', colSpan: 4, styles: { fontStyle: 'normal', fillColor: '#fff',  } } // Bottom border for this cell
+        ],
+        [
+          { content: 'Despatched To:', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', fillColor: '#fff',  } }, // Bottom border for this cell
+          { content: despatchedTo || 'N/A', colSpan: 4, styles: { fontStyle: 'normal', fillColor: '#fff',  } } // Bottom border for this cell
+        ],
+        [
+          { content: 'Transport Name:', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold', fillColor: '#fff', } }, // Bottom border for this cell
+          { content: transportName || 'N/A', colSpan: 4, styles: { fontStyle: 'normal', fillColor: '#fff',} } // Bottom border for this cell
+        ],
+      );
+
+doc.autoTable({
+  head: [['S.No', 'Product Name', 'HSN Code', 'Quantity', 'Rate Per Price', 'Total']],
+  body: tableBody,
+  startY,
+  theme: 'grid',
+  headStyles: {
+    fillColor: [255, 182, 193],  // Light pink background
+    textColor: [0, 0, 139],      // Dark blue text
+    lineColor: [0, 0, 0],        // ✅ Black border
+    lineWidth: 0.2               // Optional: thin border
+  },
+  alternateRowStyles: { fillColor: [245, 245, 245] },
+  bodyStyles: {
+    fillColor: [255, 255, 255],
+    textColor: [0, 0, 0],
+    lineColor: [0, 0, 0],
+    lineWidth: 0.2
+  },
+  didDrawPage: drawPageBorder
+});
+
+
+  // Terms & Conditions Box
+  startY = doc.autoTable.previous.finalY + 10;
+  const grandTotalInWords = numberToWords(billingDetails.grandTotal);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 139);
+  doc.text(`Rupees: ${grandTotalInWords}`, borderMargin + 5, startY);
+
+  const terms = [
+  '1. Goods once sold will not be taken back.',
+  '2. All matters Subject to "Sivakasi" jurisdiction only.',
+  '3. Certified that the particulars given above are true and correct.'
+];
+
+const padding = 10;
+const lineHeight = 7;
+const boxX = borderMargin + 4;
+const boxY = startY + 6;
+const boxWidth = pageWidth - 2 * (borderMargin + 4);
+const boxHeight = 45; // Increased height to fit 3 lines
+
+doc.setDrawColor(0, 0, 0);
+doc.setLineWidth(0.2);
+doc.rect(boxX, boxY, boxWidth, boxHeight);
+
+let currentY = boxY + padding;
+doc.setFont('helvetica', 'bold');
+doc.text('Terms & Conditions', boxX + padding, currentY);
+
+doc.setFont('helvetica', 'normal');
+doc.setTextColor(0, 0, 0);
+
+// Draw all terms dynamically
+terms.forEach(term => {
+  currentY += lineHeight;
+  doc.text(term, boxX + padding, currentY);
+});
+
+// Signature at the same vertical level as last line
+const authSig = 'Authorised Signature';
+const authSigWidth = doc.getTextWidth(authSig);
+const authSigX = boxX + boxWidth - authSigWidth - padding;
+doc.setFont('helvetica', 'bold');
+doc.text(authSig, authSigX, currentY);
+
+};
+const handleGenerateAllCopies2 = async () => {
+  const invoiceNumber = manualInvoiceNumber.trim();
+  if (!invoiceNumber || cart.length === 0) {
+    alert("Please enter invoice number and cart items.");
+    return;
+  }
+
+  await saveBillingDetails(invoiceNumber);
+  const doc = new jsPDF();
+  const copyTypes = [ 'CUSTOMER COPY'];
+
+  for (let i = 0; i < copyTypes.length; i++) {
+    if (i > 0) doc.addPage();
+    generatePDFPage(doc, copyTypes[i], invoiceNumber, MyLogo); // <-- pass base64 logo
+  }
+
+  doc.save(`TAX INVOICE-${invoiceNumber}-25.pdf`);
+};
+
+const CustomerCopy2 = async () => {
+ if (cart.length === 0) {
+     alert('The cart is empty. Please add items to the cart before saving.');
+     return; // Exit the function if the cart is empty
+   }
  
-//    // Validate the invoice number
-//    const invoiceNumber = manualInvoiceNumber.trim();
-//    if (!invoiceNumber) {
-//      alert('Please enter a valid invoice number.');
-//      return; // Exit the function if the invoice number is empty
-//    }
-//    const billingDocRef = collection(db, 'customerBilling');
+   // Validate the invoice number
+   const invoiceNumber = manualInvoiceNumber.trim();
+   if (!invoiceNumber) {
+     alert('Please enter a valid invoice number.');
+     return; // Exit the function if the invoice number is empty
+   }
+   const billingDocRef = collection(db, 'customerBilling');
    
-//    try {
+   try {
      
-//      await addDoc(billingDocRef, {
-//        ...billingDetails,
-//        customerName,
-//        customerAddress,
-//        customerState,
-//        customerPhoneNo,
-//        customerEmail,
-//        customerGSTIN,
+     await addDoc(billingDocRef, {
+       ...billingDetails,
+       customerName,
+       customerAddress,
+       customerState,
+       customerPhoneNo,
+       customerEmail,
+       customerGSTIN,
       
-//        productsDetails: cart.map(item => ({
-//          productId: item.productId,
-//          name: item.name,
-//          saleprice: item.saleprice,
-//          quantity: item.quantity
-//        })),
-//        createdAt: Timestamp.fromDate(selectedDate),
-//        invoiceNumber, // Use the same invoice number
-//      });
-//      console.log('Billing details saved successfully in Firestore');
-//    } catch (error) {
-//      console.error('Error saving billing details: ', error);
-//    }
+       productsDetails: cart.map(item => ({
+         productId: item.productId,
+         name: item.name,
+         saleprice: item.saleprice,
+         quantity: item.quantity
+       })),
+       createdAt: Timestamp.fromDate(selectedDate),
+       invoiceNumber, // Use the same invoice number
+     });
+     console.log('Billing details saved successfully in Firestore');
+   } catch (error) {
+     console.error('Error saving billing details: ', error);
+   }
  
-//    // Generate and save PDF invoice
-//     const doc = new jsPDF();
-//    const pageWidth = doc.internal.pageSize.getWidth();
-//    const pageHeight = doc.internal.pageSize.getHeight();
-//    const borderMargin = 10;
+   // Generate and save PDF invoice
+    const doc = new jsPDF();
+   const pageWidth = doc.internal.pageSize.getWidth();
+   const pageHeight = doc.internal.pageSize.getHeight();
+   const borderMargin = 10;
  
-//    const drawPageBorder = () => {
-//      doc.setDrawColor(0, 0, 0);
-//      doc.setLineWidth(0.2);
-//      doc.rect(borderMargin, borderMargin, pageWidth - 2 * borderMargin, pageHeight - 2 * borderMargin);
-//    };
+   const drawPageBorder = () => {
+     doc.setDrawColor(0, 0, 0);
+     doc.setLineWidth(0.2);
+     doc.rect(borderMargin, borderMargin, pageWidth - 2 * borderMargin, pageHeight - 2 * borderMargin);
+   };
  
-//    drawPageBorder();
+   drawPageBorder();
  
-//    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-//                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-//   const headerTable = [
-//     ['T.M.CRACKERS PARK', '', 'TAX INVOICE'],
-//     ['Address:1/90Z6, Balaji Nagar, Anna Colony', '', 'CUSTOMER COPY'],
-//     ['Vadamamalapuram ', '', `Invoice Number: ${invoiceNumber}`],
-//     ['Thiruthangal - 626130', '', `Date: ${selectedDate.getDate().toString().padStart(2, '0')}-${monthNames[selectedDate.getMonth()]}-${selectedDate.getFullYear()}`],
-//     ['Sivakasi (Zone)', '', 'GSTIN: 33AAVFT8036C1ZZ'],
-//     ['Virudhunagar (Dist)', '', ''],
-//     ['State: 33-Tamil Nadu', '', ''],
-//     ['Phone number: 97514 87277 / 95853 58106', '', '']
+  const headerTable = [
+    ['T.M.CRACKERS PARK', '', 'TAX INVOICE'],
+    ['Address:1/90Z6, Balaji Nagar, Anna Colony', '', 'CUSTOMER COPY'],
+    ['Vadamamalapuram ', '', `Invoice Number: ${invoiceNumber}`],
+    ['Thiruthangal - 626130', '', `Date: ${selectedDate.getDate().toString().padStart(2, '0')}-${monthNames[selectedDate.getMonth()]}-${selectedDate.getFullYear()}`],
+    ['Sivakasi (Zone)', '', 'GSTIN: 33AAVFT8036C1ZZ'],
+    ['Virudhunagar (Dist)', '', ''],
+    ['State: 33-Tamil Nadu', '', ''],
+    ['Phone number: 97514 87277 / 95853 58106', '', '']
    
-//  ];
+ ];
  
-//  const headerStartY = 14;
+ const headerStartY = 14;
  
-//  doc.autoTable({
-//    body: headerTable,
-//    startY: headerStartY,
-//    theme: 'plain',
-//    styles: { fontSize: 9 },
-//    margin: { left: 15, right: 30 },
-//    columnStyles: {
-//      0: { fontStyle: 'bold', cellWidth: 80 },
-//      1: { cellWidth: 37 },
-//      2: { fontStyle: 'bold', halign: 'right', cellWidth: 60 }
-//    },
-//    didDrawPage: drawPageBorder,
-//    didParseCell: function (data) {
-//      if (data.row.index === 0) {
-//        data.cell.styles.textColor = [255, 0, 0];
-//        data.cell.styles.fontSize = 11;
-//        data.cell.styles.fontStyle = 'bold';
-//      }
-//    }
-//  });
+ doc.autoTable({
+   body: headerTable,
+   startY: headerStartY,
+   theme: 'plain',
+   styles: { fontSize: 9 },
+   margin: { left: 15, right: 30 },
+   columnStyles: {
+     0: { fontStyle: 'bold', cellWidth: 80 },
+     1: { cellWidth: 37 },
+     2: { fontStyle: 'bold', halign: 'right', cellWidth: 60 }
+   },
+   didDrawPage: drawPageBorder,
+   didParseCell: function (data) {
+     if (data.row.index === 0) {
+       data.cell.styles.textColor = [255, 0, 0];
+       data.cell.styles.fontSize = 11;
+       data.cell.styles.fontStyle = 'bold';
+     }
+   }
+ });
  
-//  // ⬛ Draw full rectangle around the header table
-//  const headerEndY = doc.autoTable.previous.finalY;
-//  const rectX = 14; // Same as left margin
-//  const rectY = headerStartY - 2; // Small padding above
-//  const rectWidth = 182;
-//  const rectHeight = headerEndY - headerStartY + 4; // height + padding
+ // ⬛ Draw full rectangle around the header table
+ const headerEndY = doc.autoTable.previous.finalY;
+ const rectX = 14; // Same as left margin
+ const rectY = headerStartY - 2; // Small padding above
+ const rectWidth = 182;
+ const rectHeight = headerEndY - headerStartY + 4; // height + padding
  
-//  doc.setDrawColor(0, 0, 0);
-//  doc.setLineWidth(0.2);
-//  doc.rect(rectX, rectY, rectWidth, rectHeight); // ⬅️ Rectangle around entire headerTable
- 
- 
-//  let startY = doc.autoTable.previous.finalY + 5;
- 
-//    const customerDetails = [
-//    ['TO', '', 'Account Details', ''], // Fixed: 4 columns
-//    ['Name', customerName, 'A/c Holder Name', 'Gowtham'],
-//    ['Address', customerAddress, 'A/c Number', '231100050309543'],
-//    ['State', customerState, 'Bank Name', 'Tamilnad Mercantile Bank'],
-//    ['Phone', customerPhoneNo, 'Branch', 'Thiruthangal'],
-//    ['GSTIN', customerGSTIN, 'IFSC Code', 'TMBL0000231'],
-//    ['PAN', customerPan, '', '']
-//  ];
+ doc.setDrawColor(0, 0, 0);
+ doc.setLineWidth(0.2);
+ doc.rect(rectX, rectY, rectWidth, rectHeight); // ⬅️ Rectangle around entire headerTable
  
  
-//  doc.autoTable({
-//    body: customerDetails,
-//    startY,
-//    theme: 'grid',
-//    styles: {
-//      fontSize: 9,
-//      textColor: [0, 0, 0],
-//      lineColor: [0, 0, 0],
-//      lineWidth: 0.2
-//    },
-//    columnStyles: {
-//      0: { fontStyle: 'bold', cellWidth: 25 },
-//      1: { cellWidth: 60 },
-//      2: { fontStyle: 'bold', cellWidth: 35 },
-//      3: { cellWidth: 62 }
-//    },
-//    didDrawCell: function (data) {
-//      // Remove top and bottom borders (row lines)
-//      if (data.cell.section === 'body') {
-//        data.cell.styles.lineWidth = {
-//          top: 0,
-//          bottom: 0,
-//          left: 0.2,
-//          right: 0.2
-//        };
-//      }
-//    }
-//  });
+ let startY = doc.autoTable.previous.finalY + 5;
+ 
+   const customerDetails = [
+   ['TO', '', 'Account Details', ''], // Fixed: 4 columns
+   ['Name', customerName, 'A/c Holder Name', 'Gowtham'],
+   ['Address', customerAddress, 'A/c Number', '231100050309543'],
+   ['State', customerState, 'Bank Name', 'Tamilnad Mercantile Bank'],
+   ['Phone', customerPhoneNo, 'Branch', 'Thiruthangal'],
+   ['GSTIN', customerGSTIN, 'IFSC Code', 'TMBL0000231'],
+   ['PAN', customerPan, '', '']
+ ];
  
  
+ doc.autoTable({
+   body: customerDetails,
+   startY,
+   theme: 'grid',
+   styles: {
+     fontSize: 9,
+     textColor: [0, 0, 0],
+     lineColor: [0, 0, 0],
+     lineWidth: 0.2
+   },
+   columnStyles: {
+     0: { fontStyle: 'bold', cellWidth: 25 },
+     1: { cellWidth: 60 },
+     2: { fontStyle: 'bold', cellWidth: 35 },
+     3: { cellWidth: 62 }
+   },
+   didDrawCell: function (data) {
+     // Remove top and bottom borders (row lines)
+     if (data.cell.section === 'body') {
+       data.cell.styles.lineWidth = {
+         top: 0,
+         bottom: 0,
+         left: 0.2,
+         right: 0.2
+       };
+     }
+   }
+ });
  
  
  
-//    startY = doc.autoTable.previous.finalY + 5;
  
-//    const tableBody = cart.map((item, index) => [
-//      (index + 1).toString(),
-//      item.name,
-//      '3604',
-//      item.quantity.toString(),
-//      `Rs. ${item.saleprice.toFixed(2)}`,
-//      `Rs. ${(item.saleprice * item.quantity).toFixed(2)}`
-//    ]);
  
-//    const FIXED_TABLE_ROWS = 3;
-//    const usedRows = tableBody.length;
-//    const emptyRows = FIXED_TABLE_ROWS - usedRows - 6;
-//    for (let i = 0; i < emptyRows; i++) {
-//      tableBody.push(['', '', '', '', '', '']);
-//    }
+   startY = doc.autoTable.previous.finalY + 5;
  
-//     tableBody.push(
-//     [{ content: 'Total Amount:', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.totalAmount)}.00`],
-//     [{ content: `Discount (${billingDetails.discountPercentage}%):`, colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } },
-//      `${Math.round(billingDetails.totalAmount * (parseFloat(billingDetails.discountPercentage) / 100)).toFixed(2)}`],
-//     [{ content: 'Sub Total:', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.discountedTotal)}.00`]
-//   );
+   const tableBody = cart.map((item, index) => [
+     (index + 1).toString(),
+     item.name,
+     '3604',
+     item.quantity.toString(),
+     `Rs. ${item.saleprice.toFixed(2)}`,
+     `Rs. ${(item.saleprice * item.quantity).toFixed(2)}`
+   ]);
+ 
+   const FIXED_TABLE_ROWS = 3;
+   const usedRows = tableBody.length;
+   const emptyRows = FIXED_TABLE_ROWS - usedRows - 6;
+   for (let i = 0; i < emptyRows; i++) {
+     tableBody.push(['', '', '', '', '', '']);
+   }
+ 
+    tableBody.push(
+    [{ content: 'Total Amount:', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.totalAmount)}.00`],
+    [{ content: `Discount (${billingDetails.discountPercentage}%):`, colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } },
+     `${Math.round(billingDetails.totalAmount * (parseFloat(billingDetails.discountPercentage) / 100)).toFixed(2)}`],
+    [{ content: 'Sub Total:', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.discountedTotal)}.00`]
+  );
 
-//   if (taxOption === 'cgst_sgst') {
-//     tableBody.push(
-//       [{ content: 'CGST (9%):', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.cgstAmount)}.00`],
-//       [{ content: 'SGST (9%):', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.sgstAmount)}.00`]
-//     );
-//   } else if (taxOption === 'igst') {
-//     tableBody.push(
-//       [{ content: 'IGST (18%):', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.igstAmount)}.00`]
-//     );
-//   }
+  if (taxOption === 'cgst_sgst') {
+    tableBody.push(
+      [{ content: 'CGST (9%):', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.cgstAmount)}.00`],
+      [{ content: 'SGST (9%):', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.sgstAmount)}.00`]
+    );
+  } else if (taxOption === 'igst') {
+    tableBody.push(
+      [{ content: 'IGST (18%):', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.igstAmount)}.00`]
+    );
+  }
 
-//   tableBody.push(
-//     [{ content: 'Grand Total:', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.grandTotal)}.00`]
-//   );
+  tableBody.push(
+    [{ content: 'Grand Total:', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, `${Math.round(billingDetails.grandTotal)}.00`]
+  );
  
-//    doc.autoTable({
-//    head: [['S.No', 'Product Name','HSN Code', 'Quantity', 'Rate Per Price', 'Total']],
-//    body: tableBody,
-//    startY,
-//    theme: 'grid',
-//    headStyles: { 
-//      fillColor: [255, 182, 193], 
-//      textColor: [0, 0, 139], 
-//      lineWidth: 0.2,
-//      lineColor: [100, 100, 100] // light gray border
-//    },
-//    bodyStyles: { 
-//      fillColor: [255, 255, 255], 
-//      textColor: [0, 0, 0], 
-//      lineWidth: 0.2,
-//      lineColor: [0, 0, 0] // same border color for body
-//    },
-//    alternateRowStyles: { fillColor: [245, 245, 245] },
-//    didDrawPage: drawPageBorder
-//  });
+   doc.autoTable({
+   head: [['S.No', 'Product Name','HSN Code', 'Quantity', 'Rate Per Price', 'Total']],
+   body: tableBody,
+   startY,
+   theme: 'grid',
+   headStyles: { 
+     fillColor: [255, 182, 193], 
+     textColor: [0, 0, 139], 
+     lineWidth: 0.2,
+     lineColor: [100, 100, 100] // light gray border
+   },
+   bodyStyles: { 
+     fillColor: [255, 255, 255], 
+     textColor: [0, 0, 0], 
+     lineWidth: 0.2,
+     lineColor: [0, 0, 0] // same border color for body
+   },
+   alternateRowStyles: { fillColor: [245, 245, 245] },
+   didDrawPage: drawPageBorder
+ });
  
  
-//    startY = doc.autoTable.previous.finalY + 8;
-//    const grandTotalInWords = numberToWords(billingDetails.grandTotal);
-//    doc.setFont('helvetica', 'bold');
-//    doc.setFontSize(10);
-//    doc.setTextColor(0, 0, 139);
-//    doc.text(`Rupees: ${grandTotalInWords}`, borderMargin + 5, startY);
+   startY = doc.autoTable.previous.finalY + 8;
+   const grandTotalInWords = numberToWords(billingDetails.grandTotal);
+   doc.setFont('helvetica', 'bold');
+   doc.setFontSize(10);
+   doc.setTextColor(0, 0, 139);
+   doc.text(`Rupees: ${grandTotalInWords}`, borderMargin + 5, startY);
  
-//    startY += 10;
-//    const terms = [
-//    '1. Goods once sold will not be taken back.',
-//    '2. All matters Subject to "Sivakasi" jurisdiction only.'
-//  ];
+   startY += 10;
+   const terms = [
+   '1. Goods once sold will not be taken back.',
+   '2. All matters Subject to "Sivakasi" jurisdiction only.'
+ ];
  
-//  doc.setFontSize(10);
-//  doc.setTextColor(0, 0, 0);
+ doc.setFontSize(10);
+ doc.setTextColor(0, 0, 0);
  
-//  // Padding settings
-//  const padding = 6;
-//  const lineHeight = 6;
+ // Padding settings
+ const padding = 6;
+ const lineHeight = 6;
  
-//  const boxX = borderMargin + 4;
-//  const boxY = startY;
-//  const boxWidth = pageWidth - 2 * (borderMargin + 4);
+ const boxX = borderMargin + 4;
+ const boxY = startY;
+ const boxWidth = pageWidth - 2 * (borderMargin + 4);
  
-//  // Estimate box height: padding top + title + each line + signature + padding bottom
-//  const contentHeight = padding + 6 + terms.length * lineHeight + 10 + padding;
-//  const boxHeight = contentHeight;
+ // Estimate box height: padding top + title + each line + signature + padding bottom
+ const contentHeight = padding + 6 + terms.length * lineHeight + 10 + padding;
+ const boxHeight = contentHeight;
  
-//  // Draw rectangle border with full padding
-//  doc.setDrawColor(0, 0, 0);
-//  doc.setLineWidth(0.2);
-//  doc.rect(boxX, boxY, boxWidth, boxHeight);
+ // Draw rectangle border with full padding
+ doc.setDrawColor(0, 0, 0);
+ doc.setLineWidth(0.2);
+ doc.rect(boxX, boxY, boxWidth, boxHeight);
  
-//  // Title
-//  let currentY = boxY + padding;
-//  doc.setFont('helvetica', 'bold');
-//  doc.text('Terms & Conditions', boxX + padding, currentY);
+ // Title
+ let currentY = boxY + padding;
+ doc.setFont('helvetica', 'bold');
+ doc.text('Terms & Conditions', boxX + padding, currentY);
  
-//  // Terms list
-//  // Only show the first term normally
-//  doc.setFont('helvetica', 'normal');
-//  currentY += 6;
-//  doc.text(terms[0], boxX + padding, currentY);
+ // Terms list
+ // Only show the first term normally
+ doc.setFont('helvetica', 'normal');
+ currentY += 6;
+ doc.text(terms[0], boxX + padding, currentY);
  
-//  // Now draw the second term and signature on the same line
-//  currentY += lineHeight;
-//  const secondTerm = terms[1];
-//  const authSig = 'Authorised Signature';
+ // Now draw the second term and signature on the same line
+ currentY += lineHeight;
+ const secondTerm = terms[1];
+ const authSig = 'Authorised Signature';
  
-//  doc.setFont('helvetica', 'normal');
-//  doc.text(secondTerm, boxX + padding, currentY);
+ doc.setFont('helvetica', 'normal');
+ doc.text(secondTerm, boxX + padding, currentY);
  
-//  // Signature on the same line, aligned to the right
-//  doc.setFont('helvetica', 'bold');
-//  const authSigWidth = doc.getTextWidth(authSig);
-//  const authSigX = boxX + boxWidth - authSigWidth - padding;
-//  doc.text(authSig, authSigX, currentY);
+ // Signature on the same line, aligned to the right
+ doc.setFont('helvetica', 'bold');
+ const authSigWidth = doc.getTextWidth(authSig);
+ const authSigX = boxX + boxWidth - authSigWidth - padding;
+ doc.text(authSig, authSigX, currentY);
  
 
 
-// doc.save(`invoice_${invoiceNumber}_CUSTOMERCOPY.pdf`);
+doc.save(`invoice_${invoiceNumber}_CUSTOMERCOPY.pdf`);
 
-// };
+};
 
 
 
@@ -1369,30 +1631,12 @@ return (
   <button className="btn btn-success" onClick={handleGenerateAllCopies}>
     Download All Copies
   </button>
-  <button 
-    className="btn btn-info" 
-    style={{ display: "none" }} 
-    // onClick={() => transportCopy(invoiceNumber)}
-  >
-    Transport Copy
-  </button>
-  <button 
-    className="btn btn-warning" 
-    style={{ display: "none" }} 
-    // onClick={() => salesCopy(invoiceNumber)}
-  >
-    Sales Copy
-  </button>
-  <button 
-    className="btn btn-danger" 
-    style={{ display: "none" }} 
-    // onClick={() => OfficeCopy(invoiceNumber)}
-  >
-    Office Copy
-  </button>
-  <button className="btn btn-dark" >
+  <button className="btn btn-success" onClick={handleGenerateAllCopies2}>
     Customer Copy
   </button>
+  
+
+
 
 </div>
 
