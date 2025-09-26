@@ -5,12 +5,12 @@ import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   //testing
-  // apiKey: "AIzaSyCTmFMUSQL_lvxZSGzihrx5G7AypB4Uk5Q",
-  // authDomain: "testing-855ce.firebaseapp.com",
-  // projectId: "testing-855ce",
-  // storageBucket: "testing-855ce.appspot.com",
-  // messagingSenderId: "1086229411180",
-  // appId: "1:1086229411180:web:4a835dadcfb73b08a42f49" 
+  apiKey: "AIzaSyCTmFMUSQL_lvxZSGzihrx5G7AypB4Uk5Q",
+  authDomain: "testing-855ce.firebaseapp.com",
+  projectId: "testing-855ce",
+  storageBucket: "testing-855ce.appspot.com",
+  messagingSenderId: "1086229411180",
+  appId: "1:1086229411180:web:4a835dadcfb73b08a42f49" 
   
     //main
     // apiKey: "AIzaSyD9dhzJrhhENssGVbsGleNDk7ZTBUxsyik",
@@ -34,12 +34,12 @@ const firebaseConfig = {
   // storageBucket: "billing-software2.appspot.com",
   // messagingSenderId: "97163152398",
   // appId: "1:97163152398:web:b02de4e1e085efbca9c05f"
-   apiKey: "AIzaSyAa1kSTH4RZEWm03smvN-ekwagEuaV-mY4",
-  authDomain: "gm-crackers.firebaseapp.com",
-  projectId: "gm-crackers",
-  storageBucket: "gm-crackers.firebasestorage.app",
-  messagingSenderId: "117393056540",
-  appId: "1:117393056540:web:d6cf60c8f2ecae427b90d9"
+  //  apiKey: "AIzaSyAa1kSTH4RZEWm03smvN-ekwagEuaV-mY4",
+  // authDomain: "gm-crackers.firebaseapp.com",
+  // projectId: "gm-crackers",
+  // storageBucket: "gm-crackers.firebasestorage.app",
+  // messagingSenderId: "117393056540",
+  // appId: "1:117393056540:web:d6cf60c8f2ecae427b90d9"
 };
 
 const app = initializeApp(firebaseConfig);
