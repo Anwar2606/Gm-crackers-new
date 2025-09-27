@@ -15,7 +15,7 @@ const InvoiceEditBillPage = () => {
   const [editBill, setEditBill] = useState(null); // Stores the selected bill for editing
   const [updatedDetails, setUpdatedDetails] = useState({}); // Holds updated bill details
   const [isModalOpen, setIsModalOpen] = useState(false); // Controls modal visibility
-
+  const [allProducts, setAllProducts] = useState([]);
   // useEffect(() => {
   //   const fetchBills = async () => {
   //     try {
@@ -57,6 +57,23 @@ const InvoiceEditBillPage = () => {
   };
 
   fetchBills();
+}, []);
+
+useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "products"));
+      const productsList = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setAllProducts(productsList);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
+
+  fetchProducts();
 }, []);
 
   const toggleSidebar = () => {

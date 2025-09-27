@@ -33,16 +33,16 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         <li><Link to="/products"><AiFillProduct /> {isOpen && <span>Products</span>}</Link></li>
 
         <li onClick={() => setIsBillsOpen(!isBillsOpen)} className="submenu-toggle">
-          <FaEye /> {isOpen && <span>All Bills {isBillsOpen ? <FaChevronUp /> : <FaChevronDown />}</span>}
+          <FaEye /> {isOpen && <span>All Bills </span>}
         </li>
-        {isBillsOpen && isOpen && (
+        {/* {isBillsOpen && isOpen && (
           <ul className="submenu">
-            {/* <li><Link to="/wholesalecopy"><GrDocumentPdf /> Whole Sale Copy</Link></li>
-            <li><Link to="/retailcopy"><IoDocumentTextOutline /> Retail Copy</Link></li> */}
+            <li><Link to="/wholesalecopy"><GrDocumentPdf /> Whole Sale Copy</Link></li>
+            <li><Link to="/retailcopy"><IoDocumentTextOutline /> Retail Copy</Link></li>
             <li><Link to="/invoicecopy"><HiOutlineDocumentText /> Invoice Copy</Link></li>
             <li><Link to="/waybillcopy"><HiOutlineDocumentCheck /> Way Bill Copy</Link></li>
           </ul>
-        )}
+        )} */}
 
         <li onClick={() => setIsBillsOpen2(!isBillsOpen2)} className="submenu-toggle">
           <FaEdit /> {isOpen && <span>Edit Bills {isBillsOpen2 ? <FaChevronUp /> : <FaChevronDown />}</span>}
