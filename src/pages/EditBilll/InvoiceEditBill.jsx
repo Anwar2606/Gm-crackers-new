@@ -6,34 +6,26 @@ import { jsPDF } from 'jspdf'; // Import jsPDF for generating PDFs
 import './InvoiceEditBill.css';
 import Sidebar from '../Sidebar/Sidebar';
 
-// const tamilFontBase64 = "4K644K+N4K6w4K+AIOCuquCviuCuqeCvjSDgrofgrrDgr4HgrrPgrqrgr43grqog4K6a4K+B4K614K6+4K6u4K6/IOCupOCvgeCuo+CviA=="; // Replace with your Base64 font string
-
-
+// Replace with your Base64 font string
 const InvoiceEditBillPage = () => {
   const [bills, setBills] = useState([]);
-   const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(true);
+  const [products, setProducts] = useState([]);
   const [editBill, setEditBill] = useState(null); // Stores the selected bill for editing
   const [updatedDetails, setUpdatedDetails] = useState({}); // Holds updated bill details
   const [isModalOpen, setIsModalOpen] = useState(false); // Controls modal visibility
   const [allProducts, setAllProducts] = useState([]);
-  // useEffect(() => {
-  //   const fetchBills = async () => {
-  //     try {
-  //       const billingSnapshot = await getDocs(collection(db, 'invoicebilling'));
-  //       const billingData = billingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-  //       // const customerBillingSnapshot = await getDocs(collection(db, 'customerBilling'));
-  //       // const customerBillingData = customerBillingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-  //       const allBills = [...billingData];
-  //       setBills(allBills);
-  //     } catch (error) {
-  //       console.error('Error fetching bills:', error);
-  //     }
-  //   };
-
-  //   fetchBills();
-  // }, []);
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const querySnapshot = await getDocs(collection(db, "products"));
+      const productList = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setProducts(productList);
+    };
+    fetchProducts();
+  }, []);
   useEffect(() => {
   const fetchBills = async () => {
     try {
@@ -92,44 +84,6 @@ const handleEdit = (bill) => {
 };
 
 
-//   const handleInputChange = (e, index, field) => {
-//     const { name, value } = e.target;
-
-//     if (field === 'product') {
-//       const updatedProducts = [...updatedDetails.productsDetails];
-//       updatedProducts[index][name] = value;
-
-//       if (name === 'quantity' || name === 'saleprice') {
-//         const quantity = updatedProducts[index].quantity || 0;
-//         const price = updatedProducts[index].saleprice || 0;
-//         updatedProducts[index].total = quantity * price;
-//       }
-
-//       setUpdatedDetails((prevDetails) => ({
-//         ...prevDetails,
-//         productsDetails: updatedProducts,
-//       }));
-//     } else {
-//       setUpdatedDetails((prevDetails) => ({
-//         ...prevDetails,
-//         [name]: value,
-//       }));
-//     }
-//   };
-
-//   const calculateTotals = () => {
-//     const totalAmount = updatedDetails.productsDetails.reduce(
-//       (acc, product) => acc + (product.quantity * product.saleprice || 0),
-//       0
-//     );
-//     const grandTotal = totalAmount + (updatedDetails.additionalCharges || 0);
-
-//     setUpdatedDetails((prevDetails) => ({
-//       ...prevDetails,
-//       totalAmount,
-//       grandTotal,
-//     }));
-//   };
 const calculateInitialTotals = () => {
   const updatedProducts = updatedDetails.productsDetails.map((product) => ({
     ...product,
@@ -223,33 +177,6 @@ const handleInputChange = (e, index = null, type = null) => {
   // Save to Firestore
   updateBillInFirestore(updatedData.id, updatedData);
 };
-
-
-  // Function to generate and download PDF copies for a specific bill
-//   const downloadAllCopies = (bill) => {
-//     const pdf = new jsPDF();
-
-//     // Title
-//     pdf.setFontSize(16);
-//     pdf.text('Invoice Copies', 10, 10);
-//     pdf.setFontSize(12);
-    
-//     // Add details for each type of copy
-//     const copies = ['Transport Copy', 'Office Copy', 'Customer Copy', 'Sales Copy'];
-    
-//     copies.forEach((copy, index) => {
-//       const yPosition = 20 + index * 30; // Position for each copy
-//       pdf.text(copy, 10, yPosition);
-//       // Add the bill details here
-//       pdf.text(`Invoice Number: ${bill.invoiceNumber || ''}`, 10, yPosition + 10);
-//       pdf.text(`Customer Name: ${bill.customerName || ''}`, 10, yPosition + 20);
-//       pdf.text(`Total Amount: ${bill.totalAmount || ''}`, 10, yPosition + 30);
-//       pdf.text(`Grand Total: ${bill.grandTotal || ''}`, 10, yPosition + 40);
-//       pdf.addPage(); // Add a new page for the next copy
-//     });
-
-//     pdf.save(`Invoice_Copies_${bill.invoiceNumber}.pdf`); // Save the PDF with the invoice number
-//   };
 
 function formatDate(date) {
   const d = date instanceof Date ? date : new Date(date); // Handles Timestamp or string
@@ -539,14 +466,53 @@ doc.rect(14, customerStartY - 2, 182, customerEndY - customerStartY + 2);
       grandTotal: hasTaxableProducts ? grandTotal : newTotalAmount,
     }));
   };
-  
+  const handleAddProduct = (product) => {
+  const newProducts = [
+    ...updatedDetails.productsDetails,
+    {
+      name: product.name,
+      quantity: 1,
+      saleprice: product.saleprice || 0,
+      total: product.saleprice || 0,
+    },
+  ];
+
+  // Subtotal
+  const totalAmount = newProducts.reduce(
+    (sum, p) => sum + (parseFloat(p.total) || 0),
+    0
+  );
+
+  // ✅ Discount (default 0 if not set)
+  const discountAmount = parseFloat(updatedDetails.discountAmount) || 0;
+
+  // Apply discount before tax
+  const discountedTotal = totalAmount - discountAmount;
+
+  // ✅ Tax on discounted total
+  const cgstAmount = (discountedTotal * 9) / 100;
+  const sgstAmount = (discountedTotal * 9) / 100;
+
+  // ✅ Grand total = discounted + taxes
+  const grandTotal = discountedTotal + cgstAmount + sgstAmount;
+
+  setUpdatedDetails((prev) => ({
+    ...prev,
+    productsDetails: newProducts,
+    totalAmount,
+    discountAmount,
+    discountedTotal,
+    cgstAmount,
+    sgstAmount,
+    grandTotal,
+  }));
+};
+
   return (
     <div className="edit-bill-page">
       <div className="main-container2">
-        {/* Sidebar Component */}
-        <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
-  
-        {/* Main Content */}
+          <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
+
         <div className="content">
           <div className="all-bills-page">
             <h1>Edit Invoice Bills</h1>
@@ -572,20 +538,18 @@ doc.rect(14, customerStartY - 2, 182, customerEndY - customerStartY + 2);
                         className="download-icon"
                         onClick={() => handleEdit(bill)}
                       />
-                      <FaDownload
-                        className="delete-icon"
-                        onClick={() => generateAllCopiesPDF(bill)}
-                      />
+                     <FaDownload className="delete-icon" onClick={() => generateAllCopiesPDF(bill)} />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-  
+
             {isModalOpen && (
               <div className="modal">
                 <div className="modal-content">
                   <h2>Edit Bill</h2>
+
                   <label>Customer Name:</label>
                   <input
                     type="text"
@@ -593,42 +557,8 @@ doc.rect(14, customerStartY - 2, 182, customerEndY - customerStartY + 2);
                     value={updatedDetails.customerName || ""}
                     onChange={(e) => handleInputChange(e)}
                   />
-                  <label>Customer Address:</label>
-                  <input
-                    type="text"
-                    name="customerAddress"
-                    value={updatedDetails.customerAddress || ""}
-                    onChange={(e) => handleInputChange(e)}
-                  />
-                  <label>Customer State:</label>
-                  <input
-                    type="text"
-                    name="customerState"
-                    value={updatedDetails.customerState || ""}
-                    onChange={(e) => handleInputChange(e)}
-                  />
-                  <label>Customer Phone:</label>
-                  <input
-                    type="text"
-                    name="customerPhoneNo"
-                    value={updatedDetails.customerPhoneNo || ""}
-                    onChange={(e) => handleInputChange(e)}
-                  />
-                  <label>Customer GSTIN:</label>
-                  <input
-                    type="text"
-                    name="customerGSTIN"
-                    value={updatedDetails.customerGSTIN || ""}
-                    onChange={(e) => handleInputChange(e)}
-                  />
-                  <label>Customer PAN:</label>
-                  <input
-                    type="text"
-                    name="customerPan"
-                    value={updatedDetails.customerPan || ""}
-                    onChange={(e) => handleInputChange(e)}
-                  />
-                  <h3>Products</h3>
+
+                  <h3>Products in Bill</h3>
                   {updatedDetails.productsDetails.map((product, index) => (
                     <div key={index}>
                       <label>Product Name:</label>
@@ -636,50 +566,68 @@ doc.rect(14, customerStartY - 2, 182, customerEndY - customerStartY + 2);
                         type="text"
                         name="name"
                         value={product.name || ""}
-                        onChange={(e) => handleInputChange(e, index, "product")}
+                        onChange={(e) =>
+                          handleInputChange(e, index, "product")
+                        }
                       />
                       <label>Quantity:</label>
                       <input
                         type="number"
                         name="quantity"
                         value={product.quantity || ""}
-                        onChange={(e) => handleInputChange(e, index, "product")}
+                        onChange={(e) =>
+                          handleInputChange(e, index, "product")
+                        }
                       />
                       <label>Price:</label>
                       <input
                         type="number"
                         name="saleprice"
                         value={product.saleprice || ""}
-                        onChange={(e) => handleInputChange(e, index, "product")}
+                        onChange={(e) =>
+                          handleInputChange(e, index, "product")
+                        }
                       />
                       <label>Total:</label>
                       <input
-  type="number"
-  name="total"
-  value={product.total || 0}
-  readOnly
-/>
-
-
-<button
-  type="button"
-  onClick={() => handleRemoveProduct(index)}
-  style={{
-    marginLeft: "10px",
-    padding: "5px 10px",
-    backgroundColor: "#ff4d4f",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-  }}
->
-  Remove
-</button>
-
-
+                        type="number"
+                        name="total"
+                        value={product.total || 0}
+                        readOnly
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveProduct(index)}
+                      >
+                        Remove
+                      </button>
                     </div>
                   ))}
+
+                  <h3>Available Products</h3>
+                  <table className="products-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Price</th>
+                        <th>Add</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map((product) => (
+                        <tr key={product.id}>
+                          <td>{product.name}</td>
+                          <td>{product.saleprice}</td>
+                          <td>
+                            <button onClick={() => handleAddProduct(product)}>
+                              Add
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
                   <label>Total Amount:</label>
                   <input
                     type="number"
@@ -708,6 +656,7 @@ doc.rect(14, customerStartY - 2, 182, customerEndY - customerStartY + 2);
                     value={updatedDetails.grandTotal || ""}
                     readOnly
                   />
+
                   <button onClick={handleSubmit}>Save</button>
                   <button onClick={() => setIsModalOpen(false)}>Cancel</button>
                 </div>
@@ -718,8 +667,6 @@ doc.rect(14, customerStartY - 2, 182, customerEndY - customerStartY + 2);
       </div>
     </div>
   );
-  
-  
 };
 
 export default InvoiceEditBillPage;
