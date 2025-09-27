@@ -31,10 +31,10 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
         <li><Link to="/newhome"><FaHome /> {isOpen && <span>Home</span>}</Link></li>
         <li><Link to="/products"><AiFillProduct /> {isOpen && <span>Products</span>}</Link></li>
-
-        <li onClick={() => setIsBillsOpen(!isBillsOpen)} className="submenu-toggle">
+       <li><Link to="/allbills"><FaEye /> {isOpen && <span>Products</span>}</Link></li>
+        {/* <li onClick={() => setIsBillsOpen(!isBillsOpen)} className="submenu-toggle">
           <FaEye /> {isOpen && <span>All Bills </span>}
-        </li>
+        </li> */}
         {/* {isBillsOpen && isOpen && (
           <ul className="submenu">
             <li><Link to="/wholesalecopy"><GrDocumentPdf /> Whole Sale Copy</Link></li>
